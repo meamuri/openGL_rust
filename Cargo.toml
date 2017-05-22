@@ -1,0 +1,7 @@
+[package]
+name = "gl_tutorial"
+version = "0.1.0"
+authors = ["meamuri <meammf@yandex.ru>"]
+
+[dependencies]
+glium = "*"
