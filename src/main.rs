@@ -18,31 +18,34 @@ const VERTEX_SHADER_SRC: &str = r#"
     #version 140
 
     in vec3 position;
-    in vec3 normal;
+    in vec3 normal;    
 
-    out vec4 my_attr;
+    out vec3 v_normal;
 
     uniform mat4 matrix;
 
-    void main() {
-        my_attr = vec4(position, 1.0);
+    void main() {     
+        v_normal = transpose(inverse(mat3(matrix))) * normal;   
         gl_Position = matrix*vec4(position, 1.0);
     }
 "#;
 const FRAGMENT_SHADER_SRC: &str = r#"
         #version 140
-
-        in vec4 my_attr;
+        
+        in vec3 v_normal;
         out vec4 color;
+        uniform vec3 u_light;
 
         void main() {
-            color = my_attr;
+            float brightness = dot(normalize(v_normal), normalize(u_light));
+            vec3 dark_color = vec3(0.6, 0.0, 0.0);
+            vec3 regular_color = vec3(1.0, 0.0, 0.0);
+            color = vec4(mix(dark_color, regular_color, brightness), 1.0);
         }
     "#;
 
 fn main() {
-    let display = glium::glutin::WindowBuilder::new().build_glium().unwrap();
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+    let display = glium::glutin::WindowBuilder::new().build_glium().unwrap();    
     
     let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
     
@@ -58,12 +61,15 @@ fn main() {
                 [0.0, 0.0, 0.01, 0.0],
                 [0.0, 0.0, 0.0, 1.0_f32], 
             ];        
+            
+let light = [-1.0, 0.4, 0.9f32]; // the direction of the light
     loop {
         
         calc_t_and_mart(&mut t, &mut matr, 0.0);
 
         let uniforms = uniform! {
             matrix: matr,
+            u_light: light
         } ;
         
         let mut target = display.draw();
@@ -83,12 +89,6 @@ fn main() {
     }
 }
 
-fn get_triangle() -> (Vertex, Vertex, Vertex) {
-    let v1 = Vertex { position: [-0.5, -0.5]    };
-    let v2 = Vertex { position: [ 0.0, 0.5]     };
-    let v3 = Vertex { position: [ 0.5, -0.25]   };
-    (v1, v2, v3)
-}
 
 fn calc_t_and_mart(t: &mut f32, matr: &mut [[f32; 4]; 4], val: f32) {
     *t += 0.0002;
