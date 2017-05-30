@@ -6,6 +6,7 @@ mod teapot;
 
 use glium::DisplayBuild;
 use glium::Surface;
+use glium::Frame;
     
 #[derive(Copy, Clone)]
 struct Vertex {
@@ -22,11 +23,12 @@ const VERTEX_SHADER_SRC: &str = r#"
 
     out vec3 v_normal;
 
+    uniform mat4 perspective;
     uniform mat4 matrix;
 
     void main() {     
         v_normal = transpose(inverse(mat3(matrix))) * normal;   
-        gl_Position = matrix*vec4(position, 1.0);
+        gl_Position = perspective * matrix * vec4(position, 1.0);
     }
 "#;
 const FRAGMENT_SHADER_SRC: &str = r#"
@@ -45,7 +47,10 @@ const FRAGMENT_SHADER_SRC: &str = r#"
     "#;
 
 fn main() {
-    let display = glium::glutin::WindowBuilder::new().build_glium().unwrap();    
+    let display = glium::glutin::WindowBuilder::new()    
+    .with_depth_buffer(24)
+    .build_glium()
+    .unwrap();    
     
     let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
     
@@ -59,24 +64,35 @@ fn main() {
                 [0.01, 0.0, 0.0, 0.0],
                 [0.0, 0.01, 0.0, 0.0],
                 [0.0, 0.0, 0.01, 0.0],
-                [0.0, 0.0, 0.0, 1.0_f32], 
+                [0.0, 0.0, 2.0, 1.0_f32], 
             ];        
             
-let light = [-1.0, 0.4, 0.9f32]; // the direction of the light
+    let light = [-1.0, 0.4, 0.9f32]; // the direction of the light
+    
     loop {
         
         calc_t_and_mart(&mut t, &mut matr, 0.0);
-
-        let uniforms = uniform! {
-            matrix: matr,
-            u_light: light
-        } ;
         
         let mut target = display.draw();
-        target.clear_color(0.0, 0.011, 0.011, 1.0);
+        target.clear_color_and_depth((0.0, 0.0, 1.0, 1.0), 1.0);
 
+        let p = get_perspective(&target);
+        let params = glium::DrawParameters {
+            depth: glium::Depth {
+                test: glium::draw_parameters::DepthTest::IfLess,
+                write: true,
+                .. Default::default()
+            },
+            .. Default::default()
+        };
+        let uniforms = uniform! {
+            matrix: matr,
+            u_light: light,
+            perspective: p,
+        } ;
+        
         target.draw((&positions, &normals), &indices, &program, 
-            &uniforms, &Default::default()).unwrap();
+            &uniforms, &params).unwrap();
 
         target.finish().unwrap();
         
@@ -97,3 +113,22 @@ fn calc_t_and_mart(t: &mut f32, matr: &mut [[f32; 4]; 4], val: f32) {
     }
     matr[3][0] = val;
 } 
+
+
+fn get_perspective(target: &Frame) -> [[f32; 4]; 4] {    
+    let (width, height) = target.get_dimensions();
+    let aspect_ratio = height as f32 / width as f32;
+
+    let fov: f32 = 3.141592 / 3.0;
+    let zfar = 1024.0;
+    let znear = 0.1;
+
+    let f = 1.0 / (fov / 2.0).tan();
+
+    [
+        [f *   aspect_ratio   ,    0.0,              0.0              ,   0.0],
+        [         0.0         ,     f ,              0.0              ,   0.0],
+        [         0.0         ,    0.0,  (zfar+znear)/(zfar-znear)    ,   1.0],
+        [         0.0         ,    0.0, -(2.0*zfar*znear)/(zfar-znear),   0.0],
+    ]
+}
