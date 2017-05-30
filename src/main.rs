@@ -79,10 +79,11 @@ fn main() {
         let p = get_perspective(&target);
         let params = glium::DrawParameters {
             depth: glium::Depth {
-                test: glium::draw_parameters::DepthTest::IfLess,
+                test: glium::DepthTest::IfLess,
                 write: true,
                 .. Default::default()
             },
+            backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
             .. Default::default()
         };
         let uniforms = uniform! {
@@ -90,7 +91,7 @@ fn main() {
             u_light: light,
             perspective: p,
         } ;
-        
+
         target.draw((&positions, &normals), &indices, &program, 
             &uniforms, &params).unwrap();
 
