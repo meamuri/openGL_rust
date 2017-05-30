@@ -11,43 +11,52 @@ struct Vertex {
 
 implement_vertex!(Vertex, position);
 
-fn main() {
-    let display = glium::glutin::WindowBuilder::new().build_glium().unwrap();
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+const VERTEX_SHADER_SRC: &str = r#"
+    #version 140
 
-    let vertex_shader_src = r#"
-        #version 140
+    in vec2 position;
 
-        in vec2 position;
+    uniform float t;
 
-        void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
-        }
-    "#;
-    let fragment_shader_src = r#"
+    void main() {
+        vec2 pos = position;
+        pos.x += t;
+        gl_Position = vec4(pos, 0.0, 1.0);
+    }
+"#;
+const FRAGMENT_SHADER_SRC: &str = r#"
         #version 140
 
         out vec4 color;
 
         void main() {
-            color = vec4(1.0, 0.0, 0.0, 1.0);
+            color = vec4(0.33, 0.0, 0.33, 1.0);
         }
     "#;
-    let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
+fn main() {
+    let display = glium::glutin::WindowBuilder::new().build_glium().unwrap();
+    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+    
+    let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
 
-    let v1 = Vertex { position: [-0.5, -0.5]    };
-    let v2 = Vertex { position: [ 0.0, 0.5]     };
-    let v3 = Vertex { position: [ 0.5, -0.25]   };
+    let (v1, v2, v3) = get_triangle();
     let shape = vec![v1, v2, v3];
     let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
 
+    let mut t: f32 = -0.5;
+    
     loop {
+        t += 0.0002;
+        if t > 0.5 {
+            t = -0.5;
+        }
+        
         let mut target = display.draw();
-        target.clear_color(0.0, 0.0, 1.0, 1.0);
+        target.clear_color(0.0, 0.011, 0.011, 1.0);
 
         target.draw(&vertex_buffer, &indices, &program, 
-        &glium::uniforms::EmptyUniforms, &Default::default()).unwrap();
+            &uniform! { t: t }, &Default::default()).unwrap();
 
         target.finish().unwrap();
         
@@ -58,4 +67,11 @@ fn main() {
             }
         }
     }
+}
+
+fn get_triangle() -> (Vertex, Vertex, Vertex) {
+    let v1 = Vertex { position: [-0.5, -0.5]    };
+    let v2 = Vertex { position: [ 0.0, 0.5]     };
+    let v3 = Vertex { position: [ 0.5, -0.25]   };
+    (v1, v2, v3)
 }
