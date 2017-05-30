@@ -1,7 +1,8 @@
 [package]
-name = "gl_tutorial"
+name = "cg_3_opengl"
 version = "0.1.0"
 authors = ["meamuri <meammf@yandex.ru>"]
 
 [dependencies]
 glium = "*"
+image = "*"

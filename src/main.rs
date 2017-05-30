@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate glium;
 
+#[path = "./tuto-07-teapot.rs"]
+mod teapot;
+
 use glium::DisplayBuild;
 use glium::Surface;
     
@@ -14,22 +17,26 @@ implement_vertex!(Vertex, position);
 const VERTEX_SHADER_SRC: &str = r#"
     #version 140
 
-    in vec2 position;
+    in vec3 position;
+    in vec3 normal;
+
+    out vec4 my_attr;
 
     uniform mat4 matrix;
 
     void main() {
-        vec2 pos = position;        
-        gl_Position = matrix*vec4(pos, 0.0, 1.0);
+        my_attr = vec4(position, 1.0);
+        gl_Position = matrix*vec4(position, 1.0);
     }
 "#;
 const FRAGMENT_SHADER_SRC: &str = r#"
         #version 140
 
+        in vec4 my_attr;
         out vec4 color;
 
         void main() {
-            color = vec4(0.33, 0.0, 0.33, 1.0);
+            color = my_attr;
         }
     "#;
 
@@ -38,32 +45,31 @@ fn main() {
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
     
     let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
-
-    let (v1, v2, v3) = get_triangle();
-    let shape = vec![v1, v2, v3];
-    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+    
+    let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
+    let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
+    let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList,
+                                      &teapot::INDICES).unwrap();
 
     let mut t: f32 = -0.5;
-    
+    let mut matr = [
+                [0.01, 0.0, 0.0, 0.0],
+                [0.0, 0.01, 0.0, 0.0],
+                [0.0, 0.0, 0.01, 0.0],
+                [0.0, 0.0, 0.0, 1.0_f32], 
+            ];        
     loop {
-        t += 0.0002;
-        if t > 0.5 {
-            t = -0.5;
-        }
+        
+        calc_t_and_mart(&mut t, &mut matr, 0.0);
 
         let uniforms = uniform! {
-            matrix: [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [t  , 0.0, 0.0, 1.0_f32],
-            ]
+            matrix: matr,
         } ;
         
         let mut target = display.draw();
         target.clear_color(0.0, 0.011, 0.011, 1.0);
 
-        target.draw(&vertex_buffer, &indices, &program, 
+        target.draw((&positions, &normals), &indices, &program, 
             &uniforms, &Default::default()).unwrap();
 
         target.finish().unwrap();
@@ -83,3 +89,11 @@ fn get_triangle() -> (Vertex, Vertex, Vertex) {
     let v3 = Vertex { position: [ 0.5, -0.25]   };
     (v1, v2, v3)
 }
+
+fn calc_t_and_mart(t: &mut f32, matr: &mut [[f32; 4]; 4], val: f32) {
+    *t += 0.0002;
+    if *t > 0.5 {
+        *t = -0.5;
+    }
+    matr[3][0] = val;
+} 
