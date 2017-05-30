@@ -16,12 +16,11 @@ const VERTEX_SHADER_SRC: &str = r#"
 
     in vec2 position;
 
-    uniform float t;
+    uniform mat4 matrix;
 
     void main() {
-        vec2 pos = position;
-        pos.x += t;
-        gl_Position = vec4(pos, 0.0, 1.0);
+        vec2 pos = position;        
+        gl_Position = matrix*vec4(pos, 0.0, 1.0);
     }
 "#;
 const FRAGMENT_SHADER_SRC: &str = r#"
@@ -51,12 +50,21 @@ fn main() {
         if t > 0.5 {
             t = -0.5;
         }
+
+        let uniforms = uniform! {
+            matrix: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [t  , 0.0, 0.0, 1.0_f32],
+            ]
+        } ;
         
         let mut target = display.draw();
         target.clear_color(0.0, 0.011, 0.011, 1.0);
 
         target.draw(&vertex_buffer, &indices, &program, 
-            &uniform! { t: t }, &Default::default()).unwrap();
+            &uniforms, &Default::default()).unwrap();
 
         target.finish().unwrap();
         
